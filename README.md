@@ -1,23 +1,35 @@
-# impl-finder
+# impl-finder (not final name)
 
-This project uses [Gradle](https://gradle.org/).
-To build and run the application, use the *Gradle* tool window by clicking the Gradle icon in the right-hand toolbar,
-or run it directly from the terminal:
+`impl-finder` is a tool that uses KSP to allow you to add a soft-dependency between modules in your
+Kotlin/Java projects. It functions by allowing you to have an `interface` that is shared between multiple
+modules, and allowing you to fetch implementations of that `interface` that may be defined somewhere
+further down your dependency tree.
 
-* Run `./gradlew run` to build and run the application.
-* Run `./gradlew build` to only build the application.
-* Run `./gradlew check` to run all checks, including tests.
-* Run `./gradlew clean` to clean all build outputs.
+This means that if you have a project with the following dependencies:
+```
+Library Foo <- Library Bar <- Application Baz 
+```
+you can define an `interface` in Library Foo, such as:
+```kotlin
+interface Foo {
+    fun number(): Int
+}
+```
+and have an implementation in Library Bar or Application Baz, like:
+```kotlin
+class BazImpl : Foo {
+    fun number(): Int {
+        return 1337
+    }
+}
+```
+and access that implementation from Library Foo.
 
-Note the usage of the Gradle Wrapper (`./gradlew`).
-This is the suggested way to use Gradle in production projects.
+Along with this, you may have multiple implementations across your entire final project that can be
+iterated over and actioned upon based on however you see fit. If one of these implementations were to be
+removed in the future, the code won't have a compile error (unless you tell it to have one!), and can thus
+adapt based on the presence of no, one, or multiple implementation(s)!
 
-[Learn more about the Gradle Wrapper](https://docs.gradle.org/current/userguide/gradle_wrapper.html).
-
-[Learn more about Gradle tasks](https://docs.gradle.org/current/userguide/command_line_interface.html#common_tasks).
-
-This project follows the suggested multi-module setup and consists of the `app` and `utils` subprojects.
-The shared build logic was extracted to a convention plugin located in `buildSrc`.
-
-This project uses a version catalog (see `gradle/libs.versions.toml`) to declare and version dependencies
-and both a build cache and a configuration cache (see `gradle.properties`).
+### TODO: Make a better name
+### TODO: Add examples
+### TODO: Add onboarding
