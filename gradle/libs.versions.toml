@@ -1,9 +1,9 @@
 [versions]
 kotlin = "2.3.10"
 kotlinxDatetime = "0.7.1"
-kotlinxSerializationJSON = "1.9.0"
+kotlinxSerializationJSON = "1.10.0"
 kotlinxCoroutines = "1.10.2"
-ksp = "2.3.6"
+ksp = "2.3.7"
 
 [libraries]
 kotlinGradlePlugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
