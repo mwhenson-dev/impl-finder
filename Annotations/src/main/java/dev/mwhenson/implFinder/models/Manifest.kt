@@ -29,7 +29,7 @@ import kotlinx.serialization.Serializable
  * @param entries these are the mappings between the [ContractName]s and the
  *                [ImplName]s that have been discovered
  *
- * @author hensonm
+ * @author mwhenson
  */
 @Serializable
 data class Manifest(

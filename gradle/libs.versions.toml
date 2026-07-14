@@ -1,4 +1,5 @@
 [versions]
+androidGradlePlugin = "9.2.1"
 kotlin = "2.3.10"
 kotlinxDatetime = "0.7.1"
 kotlinxSerializationJSON = "1.10.0"
@@ -6,6 +7,7 @@ kotlinxCoroutines = "1.10.2"
 ksp = "2.3.7"
 
 [libraries]
+android-gradlePlugin-api = { group = "com.android.tools.build", name = "gradle-api", version.ref = "androidGradlePlugin" }
 kotlinGradlePlugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 kotlinxDatetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetime" }
 kotlinxSerialization = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJSON" }

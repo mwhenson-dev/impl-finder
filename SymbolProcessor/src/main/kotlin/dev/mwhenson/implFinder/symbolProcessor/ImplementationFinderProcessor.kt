@@ -29,16 +29,20 @@ import com.google.devtools.ksp.symbol.KSVisitorVoid
 import com.google.devtools.ksp.validate
 import dev.mwhenson.implFinder.models.MutableManifest
 import kotlinx.serialization.json.Json
-import java.io.OutputStream
 
 /**
- * TODO: Write Docs
+ * This is the meat of the symbol processor.
+ *
+ * This will find any class that is annotated with [dev.mwhenson.implFinder.Implementation] be added to the
+ * JSON file that is generated for this specific library. This JSON Manifest file will later be used to generate
+ * the list of implementations that can be found at runtime.
  * TODO: Make incremental
+ *
+ * @author mwhenson
  */
 class ImplementationFinderProcessor(val codeGenerator: CodeGenerator, val logger: KSPLogger) : SymbolProcessor {
     private val mutableManifest = MutableManifest(1, mutableMapOf())
 
-    // 1 process() function
     override fun process(resolver: Resolver): List<KSAnnotated> {
         val declarations = resolver
             .getSymbolsWithAnnotation("dev.mwhenson.implFinder.Implementation")
@@ -50,7 +54,6 @@ class ImplementationFinderProcessor(val codeGenerator: CodeGenerator, val logger
         declarations.forEach { it.accept(ImplementationFinderVisitor(), Unit) }
 
         // TODO: Track dependencies by changing manifest to store declarations
-        // TODO: Figure out duplicated file names. Should be able to prevent merging in final library somehow
         val file = codeGenerator.createNewFile(
             Dependencies(true, *declarations.mapNotNull { it.containingFile }.toList().toTypedArray()),
             "dev.mwhenson.implFinder.manifest",
@@ -58,12 +61,11 @@ class ImplementationFinderProcessor(val codeGenerator: CodeGenerator, val logger
             "json")
 
         val jsonString = Json.encodeToString(mutableManifest)
-        file.write(jsonString)
+        file.write(jsonString.toByteArray())
 
         return emptyList()
     }
 
-    // 2 Visitor 
     inner class ImplementationFinderVisitor : KSVisitorVoid() {
         override fun visitClassDeclaration(classDeclaration: KSClassDeclaration, data: Unit) {
             val qualifiedClassName = classDeclaration.qualifiedName?.asString()
@@ -77,14 +79,9 @@ class ImplementationFinderProcessor(val codeGenerator: CodeGenerator, val logger
                 .filter { (it.declaration as? KSClassDeclaration)?.classKind == ClassKind.INTERFACE }
 
             interfaces.forEach { iface ->
-                val list = mutableManifest.entries.getOrPut(iface.declaration.qualifiedName!!.asString(), { mutableListOf() })
+                val list = mutableManifest.entries.getOrPut(iface.declaration.qualifiedName!!.asString()) { mutableListOf() }
                 list.add(qualifiedClassName)
             }
         }
     }
-}
-
-// Utility function for writing string to OutputStream
-fun OutputStream.write(string: String): Unit {
-    this.write(string.toByteArray())
 }

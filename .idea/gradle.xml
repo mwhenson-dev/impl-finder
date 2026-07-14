@@ -20,6 +20,7 @@
           <set>
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/Annotations" />
+            <option value="$PROJECT_DIR$/GradlePlugin" />
             <option value="$PROJECT_DIR$/SymbolProcessor" />
             <option value="$PROJECT_DIR$/buildSrc" />
           </set>

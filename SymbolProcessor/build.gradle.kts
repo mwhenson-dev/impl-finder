@@ -26,10 +26,6 @@ plugins {
 group = "dev.mwhenson.impl-finder"
 version = "unspecified"
 
-repositories {
-    mavenCentral()
-}
-
 dependencies {
     implementation(project(":Annotations"))
     implementation(libs.kspProcessingApi)

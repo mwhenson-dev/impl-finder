@@ -23,10 +23,6 @@ plugins {
 group = "dev.mwhenson.impl-finder"
 version = "unspecified"
 
-repositories {
-    mavenCentral()
-}
-
 dependencies {
     implementation(libs.kotlinxSerialization)
 
