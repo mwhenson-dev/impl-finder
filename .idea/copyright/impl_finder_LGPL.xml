@@ -1,0 +1,6 @@
+<component name="CopyrightManager">
+  <copyright>
+    <option name="notice" value="&amp;#36;originalComment.match(&quot;Copyright \(c\) (\d+)&quot;, 1, &quot;-&quot;, &quot;&amp;#36;today.year&quot;)&amp;#36;today.year Mathew Henson&#10;&#10;This file is part of impl-finder.&#10;&#10;impl-finder is free software: you can redistribute it and/or modify it under the terms of the GNU Lesser General&#10;Public License as published by the Free Software Foundation, either version 2.1 of the License,&#10;or (at your option) any later version.&#10;&#10;impl-finder is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied&#10;warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License&#10;for more details.&#10;&#10;You should have received a copy of the GNU Lesser General Public License along with impl-finder.&#10;If not, see &lt;https://www.gnu.org/licenses/&gt;.&#10; " />
+    <option name="myName" value="impl-finder LGPL" />
+  </copyright>
+</component>
