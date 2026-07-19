@@ -17,6 +17,8 @@
 
 package dev.mwhenson.implFinder.plugin
 
+import com.google.devtools.ksp.gradle.KspGradleSubplugin
+import dev.mwhenson.implFinder.plugin.attr.Attributes
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 
@@ -56,9 +58,24 @@ class ImplFinderPlugin: Plugin<Project> {
     }
 
     private fun configureJavaLibrary(target: Project) {
-        // TODO: Find if JSON has been created, warn if it hasn't
-        target.layout.buildDirectory.file("")
-        // TODO: Add JSON to final JAR
-        // TODO: Add custom attribute for manifest
+        // TODO: Is there a better way to do this.
+        // TODO: Give this a unique name and ensure it gets added properly
+
+        // KSP's own Gradle plugin already wires its resource output directory into `processResources`
+        // (see KspGradleSubplugin.applyToCompilation), so it doesn't need to be added here too - doing so
+        // causes a duplicate-entry failure once com.google.devtools.ksp is actually applied.
+        val manifestResources = KspGradleSubplugin.getKspResourceOutputDir(target, "main", "")
+        val manifestFile = manifestResources.map { it.file("dev/mwhenson/implFinder/manifest/Manifest.json") }
+
+        target.tasks.getByName("jar").doFirst {
+            if (!manifestFile.get().asFile.exists()) {
+                target.logger.warn(
+                    "impl-finder: no Manifest.json was found for project '${target.path}'. " +
+                        "No implementations from this library will be discoverable at runtime."
+                )
+            }
+        }
+
+        target.configurations.getByName("apiElements").attributes.attribute(Attributes.CONTAINS_MANIFEST, "true")
     }
 }
