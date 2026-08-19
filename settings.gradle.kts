@@ -30,7 +30,7 @@ dependencyResolutionManagement {
 }
 
 include("Annotations")
-include(":SymbolProcessor")
+include("SymbolProcessor")
 include("GradlePlugin")
 
 rootProject.name = "impl-finder"

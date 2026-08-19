@@ -21,6 +21,13 @@ import com.google.devtools.ksp.gradle.KspGradleSubplugin
 import dev.mwhenson.implFinder.plugin.attr.Attributes
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.artifacts.result.ResolvedArtifactResult
+import org.gradle.api.plugins.JavaPluginExtension
+import org.gradle.api.provider.Provider
+import java.io.File
+import java.util.jar.JarFile
+
+private const val MANIFEST_JSON_ENTRY = "dev/mwhenson/implFinder/manifest/Manifest.json"
 
 class ImplFinderPlugin: Plugin<Project> {
     override fun apply(target: Project) {
@@ -52,10 +59,44 @@ class ImplFinderPlugin: Plugin<Project> {
     }
 
     private fun configureJavaApplication(target: Project) {
-        // TODO: Find all libraries with custom attribute
         // TODO: Process and combine the JSON files
         // TODO: Generate actual Manifest code
+
+        val sourceSets = target.extensions.getByType(JavaPluginExtension::class.java).sourceSets
+
+        sourceSets.configureEach { sourceSet ->
+            val manifestArtifacts = listOf(
+                sourceSet.compileClasspathConfigurationName,
+                sourceSet.runtimeClasspathConfigurationName,
+            )
+                .map { configurationName -> target.configurations.getByName(configurationName) }
+                .map { configuration ->
+                    configuration.incoming
+                        .artifactView { view ->
+                            view.lenient(true)
+                            view.attributes.attribute(Attributes.CONTAINS_MANIFEST, "true")
+                        }
+                        .artifacts
+                        .resolvedArtifacts
+                }
+                .let { perConfiguration ->
+                    target.provider { perConfiguration.flatMap { it.get() }.distinctBy { it.id } }
+                }
+
+            val manifestJsonFiles: Provider<List<File>> = manifestArtifacts.map { artifacts ->
+                artifacts.mapNotNull { artifact -> extractManifestJson(artifact.file) }
+            }
+        }
     }
+
+    private fun extractManifestJson(jarFile: File): File? =
+        JarFile(jarFile).use { jar ->
+            val entry = jar.getEntry(MANIFEST_JSON_ENTRY) ?: return@use null
+            val extracted = File.createTempFile("impl-finder-manifest-", ".json")
+            extracted.deleteOnExit()
+            jar.getInputStream(entry).use { input -> extracted.outputStream().use { output -> input.copyTo(output) } }
+            extracted
+        }
 
     private fun configureJavaLibrary(target: Project) {
         // TODO: Is there a better way to do this.
@@ -67,14 +108,15 @@ class ImplFinderPlugin: Plugin<Project> {
         val manifestResources = KspGradleSubplugin.getKspResourceOutputDir(target, "main", "")
         val manifestFile = manifestResources.map { it.file("dev/mwhenson/implFinder/manifest/Manifest.json") }
 
-        target.tasks.getByName("jar").doFirst {
-            if (!manifestFile.get().asFile.exists()) {
-                target.logger.warn(
-                    "impl-finder: no Manifest.json was found for project '${target.path}'. " +
-                        "No implementations from this library will be discoverable at runtime."
-                )
-            }
-        }
+        // TODO: I don't like tying this to `jar`, so let's find a better way to deal with this
+//        target.tasks.getByName("jar").doFirst {
+//            if (!manifestFile.get().asFile.exists()) {
+//                target.logger.warn(
+//                    "impl-finder: no Manifest.json was found for project '${target.path}'. " +
+//                        "No implementations from this library will be discoverable at runtime."
+//                )
+//            }
+//        }
 
         target.configurations.getByName("apiElements").attributes.attribute(Attributes.CONTAINS_MANIFEST, "true")
     }
