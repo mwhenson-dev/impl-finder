@@ -18,6 +18,7 @@
 plugins {
     kotlin("jvm")
     `java-gradle-plugin`
+    alias(libs.plugins.kotlinPluginSerialization)
 }
 
 group = "dev.mwhenson.impl-finder"
@@ -34,8 +35,10 @@ gradlePlugin {
 
 dependencies {
     compileOnly(libs.android.gradlePlugin.api)
+    implementation(project(":Annotations"))
     implementation(libs.kspGradlePlugin)
     implementation(libs.kotlinGradlePlugin)
+    implementation(libs.kotlinxSerialization)
 
     testImplementation(gradleTestKit())
     testImplementation(platform("org.junit:junit-bom:6.0.0"))

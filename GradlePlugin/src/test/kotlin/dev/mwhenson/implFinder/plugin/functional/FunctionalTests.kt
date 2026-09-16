@@ -78,6 +78,18 @@ class FunctionalTests {
             }
         """.trimIndent())
 
+        val sourceDir = File(appDir, "src/main/kotlin/com/example")
+        sourceDir.mkdirs()
+        File(sourceDir, "Application.kt").writeText(
+            """
+            package com.example
+
+            class Application : Greeter {
+                override fun greet() = "Hello, World!"
+            }
+        """.trimIndent()
+        )
+
         val appBuild = root.build()
         assertTrue(appBuild.output.contains("BUILD SUCCESSFUL"))
     }

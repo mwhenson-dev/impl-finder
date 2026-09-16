@@ -18,12 +18,15 @@
 package dev.mwhenson.implFinder.plugin
 
 import com.google.devtools.ksp.gradle.KspGradleSubplugin
+import dev.mwhenson.implFinder.models.Manifest
+import dev.mwhenson.implFinder.models.MutableManifest
 import dev.mwhenson.implFinder.plugin.attr.Attributes
+import kotlinx.serialization.json.Json
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.api.artifacts.result.ResolvedArtifactResult
-import org.gradle.api.plugins.JavaPluginExtension
+import org.gradle.api.artifacts.type.ArtifactTypeDefinition
 import org.gradle.api.provider.Provider
+import org.gradle.api.tasks.bundling.Jar
 import java.io.File
 import java.util.jar.JarFile
 
@@ -59,34 +62,75 @@ class ImplFinderPlugin: Plugin<Project> {
     }
 
     private fun configureJavaApplication(target: Project) {
-        // TODO: Process and combine the JSON files
         // TODO: Generate actual Manifest code
 
-        val sourceSets = target.extensions.getByType(JavaPluginExtension::class.java).sourceSets
+        // The `java-library` plugin applies the `java` plugin internally, which fires this same callback
+        // for library projects before `java-library` itself is registered as applied. Deferring to
+        // afterEvaluate lets us reliably tell the two apart, and also ensures all dependencies declared
+        // anywhere in the project's build script have been added before we resolve against them.
+        target.afterEvaluate {
+            if (target.plugins.hasPlugin("java-library")) return@afterEvaluate
 
-        sourceSets.configureEach { sourceSet ->
-            val manifestArtifacts = listOf(
-                sourceSet.compileClasspathConfigurationName,
-                sourceSet.runtimeClasspathConfigurationName,
-            )
-                .map { configurationName -> target.configurations.getByName(configurationName) }
-                .map { configuration ->
-                    configuration.incoming
-                        .artifactView { view ->
-                            view.lenient(true)
-                            view.attributes.attribute(Attributes.CONTAINS_MANIFEST, "true")
+            configureJavaApplicationManifestMerging(target)
+        }
+    }
+
+    private fun configureJavaApplicationManifestMerging(target: Project) {
+        // Artifacts are requested with the "jar" artifact type so that, for project dependencies, Gradle
+        // builds (and depends on) the actual jar rather than substituting the compiled-classes directory
+        // it would otherwise prefer for a compile/runtime classpath.
+        val manifestArtifacts = target.provider {
+            target.configurations
+                .filter { it.isCanBeResolved }
+                .map { config ->
+                    config.incoming.artifactView { view ->
+                        view.lenient(true)
+                        view.attributes { attrs ->
+                            attrs.attribute(Attributes.CONTAINS_MANIFEST, "true")
+                            attrs.attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, ArtifactTypeDefinition.JAR_TYPE)
                         }
-                        .artifacts
-                        .resolvedArtifacts
+                    }.artifacts
                 }
-                .let { perConfiguration ->
-                    target.provider { perConfiguration.flatMap { it.get() }.distinctBy { it.id } }
-                }
+        }
 
-            val manifestJsonFiles: Provider<List<File>> = manifestArtifacts.map { artifacts ->
-                artifacts.mapNotNull { artifact -> extractManifestJson(artifact.file) }
+        val manifestEntryDir = MANIFEST_JSON_ENTRY.substringBeforeLast("/")
+        val manifestEntryName = MANIFEST_JSON_ENTRY.substringAfterLast("/")
+        val mergedManifestFile = target.layout.buildDirectory.file("generated/implFinder/$manifestEntryName")
+
+        val mergeManifestsTask = target.tasks.register("mergeImplFinderManifests") { task ->
+            task.inputs.files(manifestArtifacts.map { collections -> collections.map { it.artifactFiles } })
+            task.outputs.file(mergedManifestFile)
+
+            task.doLast {
+                // The same artifact is commonly resolvable from more than one configuration
+                // (e.g. compileClasspath and runtimeClasspath both pulling in the same project
+                // dependency), so dedupe by artifact identity before merging.
+                val manifests = manifestArtifacts.get()
+                    .flatMap { it.artifacts }
+                    .distinctBy { it.id }
+                    .mapNotNull { extractManifestJson(it.file) }
+                    .map { Json.decodeFromString<Manifest>(it.readText()) }
+
+                val output = mergedManifestFile.get().asFile
+                output.parentFile.mkdirs()
+                output.writeText(Json.encodeToString(combineManifests(manifests)))
             }
         }
+
+        target.tasks.named("jar", Jar::class.java) { jar ->
+            jar.dependsOn(mergeManifestsTask)
+            jar.from(mergedManifestFile) { spec -> spec.into(manifestEntryDir) }
+        }
+    }
+
+    private fun combineManifests(manifests: List<Manifest>): Manifest {
+        val combined = MutableManifest(version = 1, entries = mutableMapOf())
+        manifests.forEach { manifest ->
+            manifest.entries.forEach { (contract, implementations) ->
+                combined.entries.getOrPut(contract) { mutableListOf() }.addAll(implementations)
+            }
+        }
+        return combined.immutable()
     }
 
     private fun extractManifestJson(jarFile: File): File? =
